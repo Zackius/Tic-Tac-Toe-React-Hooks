@@ -1,20 +1,22 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import styled from "styled-components"
-import { DIMENSIONS, PLAYER_X, PLAYER_O, SQUARE_DIMS } from '../constants'
-import { getRandomInt } from '../utils'
+import { DIMENSIONS, PLAYER_X, PLAYER_O, SQUARE_DIMS, GAME_STATES } from '../constants'
+import { getRandomInt, switchPlayer } from '../utils'
 
 const emptyGrid = new Array(DIMENSIONS ** 2).fill(null)
 
 const TicTacToe = () => {
     const [grid, setGrid] = useState(emptyGrid)
     const [players, setPlayers] = useState<Record<string, number | null >>({
-        human: null
+        human: null,
         ai: null
     });
+    const [nextMove, setNextMove] =useState<null|number>(null)
+    const [gameState, setGameState] = useState(GAME_STATES.notStarted)
 
     const move = (index: number, player: number | null) => {
         if (player !== null) {
-            
+
             setGrid((grid) => {
                 const gridCopy = grid.concat()
                 gridCopy[index] = player;
@@ -31,13 +33,40 @@ const TicTacToe = () => {
             move(index, players.ai)
         }
     const humanMove = (index: number) => {
-        if (!grid[index]) {
+        if (!grid[index] && nextMove === players.human) {
             move(index, players.human)
-            aiMove();
+            setNextMove(players.ai)
          }
     }
+
+    useEffect(() => {
+        let timeout: NodeJS.Timeout 
+        if (
+            nextMove !== null && nextMove === players.ai &&gameState !== GAME_STATES.over
+        ) {
+            //delaying the ai move speed with 500 to make them more natural 
+            timeout = setTimeout(() => {
+                aiMove();
+            }, 500)
+        }
+        return () => timeout && clearTimeout(timeout);
+    }
+    , [nextMove, aiMove, players.ai, gameState])
+    const choosePlayer = (option: number) => {
+        setPlayers({ human: option, ai: switchPlayer(option) })
+        setGameState(GAME_STATES.inProgress)
+    }
     
-    return (
+    return gameState === GAME_STATES.notStarted ? (
+        <div>
+<Inner>
+                <p>Choose your Player</p>
+                <ButtonRow>
+                    <button onClick={() => choosePlayer(PLAYER_X)}>X</button>
+                    <button onClick={()=>choosePlayer(PLAYER_O)}>0</button>
+                </ButtonRow>         
+</Inner>
+        </div>) : (
         <Container dims={DIMENSIONS}>
           {grid.map((value, index) => {
             const isActive = value !== null;
@@ -76,4 +105,16 @@ const TicTacToe = () => {
     const Marker = styled.p`
       font-size: 68px;
     `;
+    const ButtonRow = styled.div`
+  display: flex;
+  width: 150px;
+  justify-content: space-between;
+`;
+ 
+const Inner = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 30px;
+`;
 export default TicTacToe
