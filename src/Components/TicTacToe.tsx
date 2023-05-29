@@ -1,37 +1,66 @@
-import React, { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import styled from "styled-components"
-import { DIMENSIONS, PLAYER_X, PLAYER_O, SQUARE_DIMS, GAME_STATES } from '../constants'
+import { DIMENSIONS, PLAYER_X, PLAYER_O, SQUARE_DIMS, GAME_STATES, DRAW } from '../constants'
 import { getRandomInt, switchPlayer } from '../utils'
+import Board from "./Board"
+import { minimax } from '../minimax'
+import { GAME_MODES } from '../constants'
 
 const emptyGrid = new Array(DIMENSIONS ** 2).fill(null)
+const board = new Board()
 
 const TicTacToe = () => {
-    const [grid, setGrid] = useState(emptyGrid)
+  const [grid, setGrid] = useState(emptyGrid)
+  const [mode, setMode] = useState(GAME_MODES.medium)
     const [players, setPlayers] = useState<Record<string, number | null >>({
         human: null,
         ai: null
     });
+    const [winner, setWinner] = useState<null | string>(null)
     const [nextMove, setNextMove] =useState<null|number>(null)
     const [gameState, setGameState] = useState(GAME_STATES.notStarted)
+    
+    useEffect(() => {
+        const boardWinner = board.getWinner(grid);
+        const decalreWinner = (winner:  number) => {
+            let winnerStr = "";
+            switch (winner) {
+                case PLAYER_X: winnerStr = "Player X wins";
+                    break;
+                case PLAYER_O: winnerStr = "Player 0 wins";
+                    break;
+                case DRAW:
+                    default: winnerStr = "It's a draw";
+            }
+            setGameState(GAME_STATES.over)
+            setWinner(winnerStr)
+        }
+        if (boardWinner !== null && gameState !== GAME_STATES.over) {
+            decalreWinner(boardWinner);
+        }
+    }), [gameState, grid, nextMove]
 
-    const move = (index: number, player: number | null) => {
-        if (player !== null) {
-
+    const move = useCallback((index: number, player: number | null) => {
+        if (player && gameState === GAME_STATES.inProgress) {
             setGrid((grid) => {
                 const gridCopy = grid.concat()
                 gridCopy[index] = player;
                 return gridCopy
             })
         }
-   
-    }
-          const aiMove = () => {
-            let index = getRandomInt(0, 8);
-            while (grid[index]) {
-                index = getRandomInt(0, 8)
-            }
-            move(index, players.ai)
-        }
+       } , [gameState])
+    
+  const aiMove = useCallback(() => {
+    let board = new Board(grid.concat())
+    let index = board.isEmpty(grid)
+      ? getRandomInt(0, 8)
+      : minimax(board, players.ai!)[1]
+    if (index !== null && !grid[index]) {
+      move(index, players.ai);
+      setNextMove(players.human)
+      }
+  }, [move, grid, players])    
+    
     const humanMove = (index: number) => {
         if (!grid[index] && nextMove === players.human) {
             move(index, players.human)
@@ -42,7 +71,7 @@ const TicTacToe = () => {
     useEffect(() => {
         let timeout: NodeJS.Timeout 
         if (
-            nextMove !== null && nextMove === players.ai &&gameState !== GAME_STATES.over
+            nextMove !== null && nextMove === players.ai && gameState !== GAME_STATES.over
         ) {
             //delaying the ai move speed with 500 to make them more natural 
             timeout = setTimeout(() => {
@@ -51,34 +80,59 @@ const TicTacToe = () => {
         }
         return () => timeout && clearTimeout(timeout);
     }
-    , [nextMove, aiMove, players.ai, gameState])
+        , [nextMove, aiMove, players.ai, gameState])
+    
+    
     const choosePlayer = (option: number) => {
         setPlayers({ human: option, ai: switchPlayer(option) })
         setGameState(GAME_STATES.inProgress)
+        setNextMove(PLAYER_X)
     }
-    
-    return gameState === GAME_STATES.notStarted ? (
+    const startNewGame = () => {
+        setGameState(GAME_STATES.notStarted);
+        setGrid(emptyGrid)
+    }
+  
+  switch (gameState) {
+    case GAME_STATES.notStarted:
+    default:
+      return (
         <div>
-<Inner>
-                <p>Choose your Player</p>
-                <ButtonRow>
-                    <button onClick={() => choosePlayer(PLAYER_X)}>X</button>
-                    <button onClick={()=>choosePlayer(PLAYER_O)}>0</button>
-                </ButtonRow>         
-</Inner>
-        </div>) : (
+          <Inner>
+            <p>Choose your player</p>
+            <ButtonRow>
+              <button onClick={() => choosePlayer(PLAYER_X)}>X</button>
+              <p>or</p>
+              <button onClick={() => choosePlayer(PLAYER_O)}>O</button>
+            </ButtonRow>
+          </Inner>
+        </div>
+      );
+    case GAME_STATES.inProgress:
+      return (
         <Container dims={DIMENSIONS}>
           {grid.map((value, index) => {
             const isActive = value !== null;
-     
+ 
             return (
-              <Square key={index} onClick={() => humanMove(index)}>
+              <Square
+                key={index}
+                onClick={() => humanMove(index)}
+              >
                 {isActive && <Marker>{value === PLAYER_X ? "X" : "O"}</Marker>}
               </Square>
             );
           })}
         </Container>
       );
+    case GAME_STATES.over:
+      return (
+        <div>
+        <p>{winner}</p>
+        <button onClick={startNewGame}>Start over</button>
+      </div>
+      )
+   }
     }
      
     const Container = styled.div<{ dims: number }>`
