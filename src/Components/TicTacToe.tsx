@@ -5,7 +5,6 @@ import { getRandomInt, switchPlayer } from '../utils'
 import Board from "./Board"
 import { minimax } from '../minimax'
 import { GAME_MODES } from '../constants'
-
 const emptyGrid = new Array(DIMENSIONS ** 2).fill(null)
 const board = new Board()
 
@@ -20,25 +19,25 @@ const TicTacToe = () => {
     const [nextMove, setNextMove] =useState<null|number>(null)
     const [gameState, setGameState] = useState(GAME_STATES.notStarted)
     
-    useEffect(() => {
-        const boardWinner = board.getWinner(grid);
-        const decalreWinner = (winner:  number) => {
-            let winnerStr = "";
-            switch (winner) {
-                case PLAYER_X: winnerStr = "Player X wins";
-                    break;
-                case PLAYER_O: winnerStr = "Player 0 wins";
-                    break;
-                case DRAW:
-                    default: winnerStr = "It's a draw";
-            }
-            setGameState(GAME_STATES.over)
-            setWinner(winnerStr)
-        }
-        if (boardWinner !== null && gameState !== GAME_STATES.over) {
-            decalreWinner(boardWinner);
-        }
-    }), [gameState, grid, nextMove]
+  useEffect(() => {
+    const boardWinner = board.getWinner(grid);
+    const declareWinner = (winner: number) => {
+      let winnerStr = "";
+      switch (winner) {
+        case PLAYER_X: winnerStr = "Player X wins !";
+          break;
+        case PLAYER_O: winnerStr = "Player 0 wins !";
+          break;
+        case DRAW:
+        default: winnerStr = "It's a draw !";
+      }
+      setGameState(GAME_STATES.over)
+      setWinner(winnerStr)
+    }
+    if (boardWinner !== null  &&  gameState !== GAME_STATES.over) {
+      declareWinner(boardWinner);
+    }
+  }, [gameState,  grid,  nextMove]);
 
     const move = useCallback((index: number, player: number | null) => {
         if (player && gameState === GAME_STATES.inProgress) {
@@ -52,14 +51,40 @@ const TicTacToe = () => {
     
   const aiMove = useCallback(() => {
     let board = new Board(grid.concat())
-    let index = board.isEmpty(grid)
-      ? getRandomInt(0, 8)
+    const emptyIndices = board.getEmptySquares(grid)
+    let index;
+    switch (mode) {
+      case GAME_MODES.easy:
+        do {
+          index = getRandomInt(0, 8);
+        } while (!emptyIndices.includes(index));
+        break;
+      case GAME_MODES.medium:
+        const smartMove = !board.isEmpty(grid) && Math.random() < 0.5;
+        if (smartMove) {
+          index = minimax(board, players.ai!)[1];
+        } else {
+          do {
+            index = getRandomInt(0, 8);
+          } while (!emptyIndices.includes(index))
+        }
+        break;
+      case GAME_MODES.difficult:
+      default: 
+        index = board.isEmpty(grid)
+        ? getRandomInt(0, 8)
       : minimax(board, players.ai!)[1]
-    if (index !== null && !grid[index]) {
-      move(index, players.ai);
-      setNextMove(players.human)
+    }
+    if (index && !grid[index]) {
+      if (players.ai !== null) {
+        move (index, players.ai)
+      }
+          setNextMove(players.human)
       }
   }, [move, grid, players])    
+  const changeMode = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setMode(e.target.value)
+  }
     
     const humanMove = (index: number) => {
         if (!grid[index] && nextMove === players.human) {
@@ -98,6 +123,19 @@ const TicTacToe = () => {
     default:
       return (
         <div>
+          <Inner>
+            <p>Select Level</p>
+            <select onChange={changeMode} value={mode}>
+              {Object.keys(GAME_MODES).map(key => {
+                const gameMode = GAME_MODES[key];
+                return (
+                  <option key={gameMode} value={gameMode}>
+                    {key}
+                  </option>
+                )
+              })}
+            </select>
+          </Inner>
           <Inner>
             <p>Choose your player</p>
             <ButtonRow>
