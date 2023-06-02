@@ -1,5 +1,6 @@
 import { DIMENSIONS, DRAW } from "../constants";
 
+
 type Grid = Array<null | number>;
 export default class Board {
     grid: Grid;
@@ -17,7 +18,7 @@ export default class Board {
 
     getEmptySquares = (grid = this.grid) => {
         let squares: number[ ] = [ ];
-        this.grid.forEach((square, i) => {
+        grid.forEach((square, i) => {
             if(square === null) squares.push(i)
         })
         return squares
@@ -36,7 +37,7 @@ export default class Board {
             [0, 4, 8],
             [2, 4, 6],
         ];
-        let res: number | null;
+        let res: number | null = null;
         winningCombos.forEach((el, i) => {
             if (
                 grid[el[0]] !== null &&
@@ -48,6 +49,7 @@ export default class Board {
                 res = DRAW
             }
         })
+
     }
     clone = () => {
         return new Board(this.grid.concat())
