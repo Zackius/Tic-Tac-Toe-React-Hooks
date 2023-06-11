@@ -16,7 +16,7 @@ export default class Board {
 
     //collect indices of the empty squares and return them
 
-    getEmptySquares = (grid = .grid) => {
+    getEmptySquares = (grid = this.grid) => {
         let squares: number[ ] = [ ];
         grid.forEach((square, i) => {
             if(square === null) squares.push(i)
